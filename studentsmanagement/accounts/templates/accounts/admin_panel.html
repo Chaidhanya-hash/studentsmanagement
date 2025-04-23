@@ -20,6 +20,32 @@
         <!-- Add Faculty Button -->
         <button class="btn btn-success m-2" data-bs-toggle="modal" data-bs-target="#addFacultyModal">Add Faculty</button>
     </div>
+    <div class="container mt-5">
+      <h3 class="text-center">Faculty and Their Courses</h3>
+      <table class="table table-bordered table-hover mt-3">
+          <thead class="table-dark">
+              <tr>
+                  <th>Faculty</th>
+                  <th>Provided Courses</th>
+              </tr>
+          </thead>
+          <tbody>
+              {% for faculty in faculty_data %}
+              <tr>
+                  <td>{{ faculty.name }}</td>
+                  <td>
+                      {% if faculty.courses %}
+                          {{ faculty.courses|join:", " }}
+                      {% else %}
+                          No courses assigned
+                      {% endif %}
+                  </td>
+              </tr>
+              {% endfor %}
+          </tbody>
+      </table>
+  </div>
+  
 </div>
 
 <!-- Add Student Modal -->

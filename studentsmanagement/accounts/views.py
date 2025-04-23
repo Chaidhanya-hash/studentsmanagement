@@ -6,8 +6,11 @@ import os
 from django.contrib.auth import get_user_model
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth import authenticate, login
-from .models import Course, Enrollment
+from .models import Course, Enrollment, Grade, User
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_POST
+from accounts.models import User
+
 
 # Load environment variables
 load_dotenv()
@@ -24,7 +27,16 @@ def login_view(request):
             admin_password = config('ADMIN_PASSWORD')
 
             if email == admin_email and password == admin_password:
-                return render(request, 'accounts/admin_panel.html')
+                faculty_users = User.objects.filter(is_staff=True)
+                faculty_data = []
+                for faculty in faculty_users:
+                    courses = Course.objects.filter(faculty=faculty)
+                    faculty_data.append({
+                        'name': faculty.name,
+                        'courses': [course.name for course in courses]
+                    })
+
+                return render(request, 'accounts/admin_panel.html', {'faculty_data': faculty_data})
             else:
                 messages.error(request, 'Invalid admin credentials.')
                 return redirect('login')
@@ -48,7 +60,29 @@ def login_view(request):
                 login(request, user)
                 if request.user.is_staff:
                     return redirect('faculty_profile')  # or handle unauthorized access
-                return render(request, 'accounts/student_profile.html', {'user': request.user})
+                student = request.user
+
+                # Get all enrollments of the student
+                enrollments = Enrollment.objects.filter(student=student).select_related('course')
+
+                # Get grades for the student
+                grades = Grade.objects.filter(student=student)
+                grade_dict = {grade.course.id: grade for grade in grades}
+
+                enrolled_data = []
+                for enrollment in enrollments:
+                    course = enrollment.course
+                    grade = grade_dict.get(course.id)
+                    enrolled_data.append({
+                        'course_name': course.name,
+                        'marks': grade.marks if grade else 'N/A',
+                        'grade': grade.grade if grade else 'N/A'
+                    })
+
+                return render(request, 'accounts/student_profile.html', {
+                    'user': student,
+                    'enrolled_data': enrolled_data
+                })
             else:
                 messages.error(request, 'Invalid student credentials.')
                 return redirect('login')
@@ -61,8 +95,22 @@ def login_view(request):
     return render(request, 'accounts/login.html')
 
 # Define the admin panel view
+
+User = get_user_model()
+
 def admin_panel(request):
-    return render(request, 'accounts/admin_panel.html')
+    faculty_users = User.objects.filter(is_staff=True)
+    
+    faculty_data = []
+    for faculty in faculty_users:
+        courses = Course.objects.filter(faculty=faculty)
+        faculty_data.append({
+            'name': faculty.name,
+            'courses': [course.name for course in courses]
+        })
+
+    return render(request, 'accounts/admin_panel.html', {'faculty_data': faculty_data})
+
 
 
 # Define the add_user view
@@ -115,10 +163,32 @@ def faculty_profile(request):
 from django.contrib.auth.decorators import login_required
 
 
+@login_required
 def student_profile(request):
-    if request.user.is_staff:
-        return redirect('faculty_profile')  # or handle unauthorized access
-    return render(request, 'accounts/student_profile.html', {'user': request.user})
+    student = request.user
+
+    # Get all enrollments of the student
+    enrollments = Enrollment.objects.filter(student=student).select_related('course')
+
+    # Get grades for the student
+    grades = Grade.objects.filter(student=student)
+    grade_dict = {grade.course.id: grade for grade in grades}
+
+    enrolled_data = []
+    for enrollment in enrollments:
+        course = enrollment.course
+        grade = grade_dict.get(course.id)
+        enrolled_data.append({
+            'course_name': course.name,
+            'marks': grade.marks if grade else 'N/A',
+            'grade': grade.grade if grade else 'N/A'
+        })
+
+    return render(request, 'accounts/student_profile.html', {
+        'user': student,
+        'enrolled_data': enrolled_data
+    })
+
 
 def available_courses(request):
     courses = Course.objects.all()
@@ -135,3 +205,80 @@ def enroll_course(request, course_id):
     if not Enrollment.objects.filter(student=request.user, course=course).exists():
         Enrollment.objects.create(student=request.user, course=course)
     return redirect('available_courses')
+
+
+def course_detail(request, course_id):
+    course = get_object_or_404(Course, id=course_id, faculty=request.user)
+    students = User.objects.filter(
+        is_staff=False,
+        enrollment__course=course
+    ).distinct()
+    grades = Grade.objects.filter(course=course)
+    grade_dict = {grade.student.id: grade for grade in grades}
+
+    return render(request, 'accounts/student_details.html', {
+        'course': course,
+        'students': students,
+        'grades': grade_dict
+    })
+
+
+
+@login_required
+
+
+
+
+@login_required
+def student_details(request, course_id):
+    course = get_object_or_404(Course, id=course_id, faculty=request.user)
+    students = User.objects.filter(is_staff=False, enrollment__course=course).distinct()
+
+    grades = Grade.objects.filter(course=course)
+    grade_dict = {grade.student.id: grade for grade in grades}
+
+    student_data = []
+    for student in students:
+        grade = grade_dict.get(student.id)
+        student_data.append({
+            'student': student,
+            'marks': grade.marks if grade else '',
+            'grade': grade.grade if grade else ''
+        })
+
+    return render(request, 'accounts/student_details.html', {
+        'course': course,
+        'student_data': student_data
+    })
+
+
+
+
+
+@require_POST
+
+
+
+
+@login_required
+def update_grade(request):
+    if request.method == 'POST':
+        student_id = request.POST.get('student_id')
+        course_id = request.POST.get('course_id')
+        marks = request.POST.get('marks')
+        grade = request.POST.get('grade')
+
+        student = User.objects.get(id=student_id)
+        course = Course.objects.get(id=course_id)
+
+        # Create or update the grade
+        grade_obj, created = Grade.objects.update_or_create(
+            student=student,
+            course=course,
+            defaults={'marks': marks, 'grade': grade}
+        )
+
+        return redirect('student_details', course_id=course_id)
+
+
+

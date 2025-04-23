@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Enrolled Students</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+
+<div class="container mt-5">
+  <h2 class="text-center mb-4">Enrolled Students for {{ course.name }}</h2>
+
+  <div class="d-flex justify-content-center">
+    <table class="table table-bordered w-75 text-center">
+      <thead class="table-dark">
+        <tr>
+          <th>#</th>
+          <th>Student Name</th>
+          <th>Email</th>
+          <th>Marks</th>
+          <th>Grade</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for entry in student_data %}
+        <tr>
+          <td>{{ forloop.counter }}</td>
+          <td>{{ entry.student.name }}</td>
+          <td>{{ entry.student.email }}</td>
+          <td>{{ entry.marks }}</td>
+          <td>{{ entry.grade }}</td>
+          <td>
+            <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#gradeModal{{ entry.student.id }}">
+              Add Grade
+            </button>
+          </td>
+        </tr>
+
+        <!-- Modal -->
+        <div class="modal fade" id="gradeModal{{ entry.student.id }}" tabindex="-1" aria-labelledby="gradeModalLabel{{ student.id }}" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <form method="POST" action="{% url 'update_grade' %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                  <h5 class="modal-title" id="gradeModalLabel{{ student.id }}">Add Grade for {{ student.name }}</h5>
+                  <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                  <input type="hidden" name="student_id" value="{{ entry.student.id }}">
+                  <input type="hidden" name="course_id" value="{{ course.id }}">
+
+                  <div class="mb-3">
+                    <label for="marks{{ student.id }}" class="form-label">Marks</label>
+                    <input type="number" class="form-control" id="marks{{ student.id }}" name="marks">
+                  </div>
+
+                  <div class="mb-3">
+                    <label for="grade{{ student.id }}" class="form-label">Grade</label>
+                    <input type="text" class="form-control" id="grade{{ student.id }}" name="grade">
+                  </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="submit" class="btn btn-primary">Save</button>
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+
+
+
+
+  

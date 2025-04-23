@@ -28,20 +28,27 @@
         {% if courses %}
             <div class="row justify-content-center">
                 {% for course in courses %}
-                    <div class="col-md-6 mb-3">
-                        <div class="card shadow-sm">
-                            <div class="card-body">
-                                <h5 class="card-title">{{ course.name }}</h5>
-                                <p class="card-text text-muted">Course ID: {{ course.id }}</p>
-                            </div>
+                    {% if course.id %}
+                        <div class="col-md-6 mb-3">
+                            <a href="{% url 'student_details' course.id %}" class="text-decoration-none text-dark">
+                                <div class="card shadow-sm">
+                                    <div class="card-body">
+                                        <h5 class="card-title">{{ course.name }}</h5>
+                                        <p class="card-text text-muted">Course ID: {{ course.id }}</p>
+                                    </div>
+                                </div>
+                            </a>
                         </div>
-                    </div>
+                    {% else %}
+                        <p class="text-danger">Course ID missing!</p>
+                    {% endif %}
                 {% endfor %}
             </div>
         {% else %}
             <p class="text-muted">You haven't provided any courses yet.</p>
         {% endif %}
     </div>
+         
 </div>
 
 <!-- Course Modal -->
